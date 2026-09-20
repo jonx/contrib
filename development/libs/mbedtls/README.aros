@@ -1,0 +1,41 @@
+Mbed TLS on AROS
+================
+
+Static libraries and headers of Mbed TLS 3.6 (long-term support), built
+from the unpatched release.
+
+Using it in a program
+---------------------
+Compile with  -DMBEDTLS_USER_CONFIG_FILE='<mbedtls_user_config_aros.h>'
+so that your program sees the configuration the libraries were built with,
+and link  -lmbedtls -lmbedx509 -lmbedcrypto.
+
+There is no mbedtls_net_*: bsdsocket.library sockets are not file
+descriptors. Open the socket yourself and give the library two functions
+with mbedtls_ssl_set_bio(), one calling send() and one recv(); return
+MBEDTLS_ERR_NET_SEND_FAILED / MBEDTLS_ERR_NET_RECV_FAILED on failure.
+
+Randomness is getentropy() (entropy.resource, AROS of July 2026 or
+later); on an older AROS mbedtls_ctr_drbg_seed() fails rather than run
+with weak randomness.
+
+AROS has no store of certificate authorities: a program brings its own
+(curl.se/ca/cacert.pem is Mozilla's), parsed with mbedtls_x509_crt_parse().
+
+What differs from the default configuration
+-------------------------------------------
+See mbedtls_user_config_aros.h: no NET_C, no TIMING_C, no PSA key storage,
+no CPU-specific AES, no 128-bit division; entropy and milliseconds from
+mbedtls_aros.c, which is part of libmbedcrypto.a. The build also sets
+MBEDTLS_TEST_SW_INET_PTON, because posixc has no inet_pton.
+
+mbedtls.pkginfo
+---------------
+What a package of this port is, for a package manager: name, version, kind,
+the catalogue fields (Short, Category, Author, Homepage, License, ...),
+where the release came from and its SHA-256, and the installed paths that
+belong to it (Files:, relative to the system root; a drawer means all of
+it). "Key: value" lines, as in an Aminet .readme; Description and Changes
+repeat, an empty one is a paragraph break. It is installed beside the
+LICENSE in Developer/Docs/mbedtls, so a nightly archive describes this
+component by itself.

@@ -1,0 +1,30 @@
+Format: pkginfo 1
+Name: mbedtls
+Version: 3.6.7
+Kind: sdk
+Short: Small TLS library to link into programs
+Category: dev/lib
+Tags: tls, ssl, https, crypto, x509, library
+Author: The Mbed TLS Contributors
+Homepage: https://www.trustedfirmware.org/projects/mbed-tls/
+Repository: https://github.com/Mbed-TLS/mbedtls
+License: Apache-2.0 OR GPL-2.0-or-later
+Distribution: open-source
+Upstream-Archive: https://github.com/Mbed-TLS/mbedtls/releases/download/mbedtls-3.6.7/mbedtls-3.6.7.tar.bz2
+Upstream-SHA256: a7e8bcbec0e6f761b4af24f25677626b35f762f68eef79c08677a363212d11f6
+Port: development/libs/mbedtls
+Port-Maintainer: The AROS Development Team
+Depends:
+Files: Developer/lib/libmbedtls.a
+Files: Developer/lib/libmbedx509.a
+Files: Developer/lib/libmbedcrypto.a
+Files: Developer/include/mbedtls
+Files: Developer/include/psa
+Files: Developer/include/mbedtls_user_config_aros.h
+Files: Developer/Docs/mbedtls
+Description: Mbed TLS is a C library that implements TLS 1.2 and 1.3, X.509 certificates and the cryptography they need. It is small and made to be linked into a program: a TLS client that verifies certificates adds about 0.7 MB.
+Description:
+Description: This is the long-term support branch, 3.6. The AROS port is static libraries and headers. It leaves out Mbed TLS's own socket layer, since bsdsocket.library sockets are not file descriptors: a program gives the library its send and receive functions with mbedtls_ssl_set_bio(). Randomness comes from getentropy(), which AROS answers from entropy.resource (AROS of July 2026 or later).
+Description:
+Description: Compile with -DMBEDTLS_USER_CONFIG_FILE='<mbedtls_user_config_aros.h>' and link -lmbedtls -lmbedx509 -lmbedcrypto.
+Changes: First AROS port.

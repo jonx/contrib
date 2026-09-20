@@ -1,0 +1,82 @@
+# Copyright (C) 2026, The AROS Development Team. All rights reserved.
+# $Id$
+
+include $(SRCDIR)/config/aros-contrib.cfg
+
+# Mbed TLS: a small TLS library, made to be linked into a program. Static
+# libraries and headers, as for OpenSSL: libmbedtls.a, libmbedx509.a,
+# libmbedcrypto.a. The 3.6 branch is the long-term support one.
+#
+# Nothing of the release is patched. AROS's changes to its configuration are
+# in mbedtls_user_config_aros.h, read after the default one, and what the
+# library asks of the system (entropy, milliseconds) is in mbedtls_aros.c,
+# which goes into libmbedcrypto.a. mbedtls.pkginfo says what a package of
+# this port is; see README.aros.
+
+MBEDTLS_VERSION := 3.6.7
+ARCHBASE        := mbedtls-$(MBEDTLS_VERSION)
+REPOSITORIES    := https://github.com/Mbed-TLS/mbedtls/releases/download/$(ARCHBASE)/
+MBEDTLS_SOURCE    := $(PORTSDIR)/mbedtls/$(ARCHBASE)
+MBEDTLS_BUILD_DIR := $(GENDIR)/$(CURDIR)/$(ARCHBASE)
+MBEDTLS_PORT      := $(SRCDIR)/$(CURDIR)
+
+# MBEDTLS_TEST_SW_INET_PTON: posixc has no inet_pton (it is in miami.library),
+# so the library reads addresses in certificates with its own.
+# The quotes are escaped for the shell Mbed TLS's Makefile hands CFLAGS to.
+MBEDTLS_CPPFLAGS := -DMBEDTLS_USER_CONFIG_FILE=\\\"mbedtls_user_config_aros.h\\\" \
+        -DMBEDTLS_TEST_SW_INET_PTON -I$(MBEDTLS_PORT)
+
+#MM- contrib-development : contrib-mbedtls
+#MM- contrib-mbedtls : contrib-mbedtls-install
+#MM contrib-mbedtls-setup : contrib-mbedtls-fetch
+#MM contrib-mbedtls-build : contrib-mbedtls-setup
+#MM contrib-mbedtls-install : contrib-mbedtls-build
+
+%fetch mmake=contrib-mbedtls-fetch archive=$(ARCHBASE) destination=$(PORTSDIR)/mbedtls \
+    location=$(PORTSSOURCEDIR) archive_origins=$(REPOSITORIES) suffixes="tar.bz2"
+
+$(MBEDTLS_BUILD_DIR)/.links-created : $(TOP)/$(CURDIR)/mmakefile
+	@$(RM) $@
+	%mkdir_q dir=$(MBEDTLS_BUILD_DIR)
+	@cd $(MBEDTLS_SOURCE); \
+	find library include 3rdparty scripts framework -type d -exec mkdir -p $(MBEDTLS_BUILD_DIR)/\{\} \;;\
+	find library include 3rdparty scripts framework -type f -exec ln -fs $(MBEDTLS_SOURCE)/\{\} $(MBEDTLS_BUILD_DIR)/\{\} \;;
+	@$(TOUCH) $@
+
+#MM
+contrib-mbedtls-setup : $(MBEDTLS_BUILD_DIR)/.links-created
+
+$(MBEDTLS_BUILD_DIR)/.build-flag : $(MBEDTLS_BUILD_DIR)/.links-created \
+        $(MBEDTLS_PORT)/mbedtls_user_config_aros.h $(MBEDTLS_PORT)/mbedtls_aros.c
+	@$(RM) $@
+	@$(ECHO) "Building    Mbed TLS..."
+	@cd $(MBEDTLS_BUILD_DIR)/library; \
+	env -i PATH="$(PATH)" make libmbedcrypto.a libmbedx509.a libmbedtls.a \
+	    CC="$(strip $(CC) $(TARGET_SYSROOT))" AR="$(AR_PLAIN)" \
+	    CFLAGS="$(CFLAGS) $(MBEDTLS_CPPFLAGS)" SHARED=
+	@cd $(MBEDTLS_BUILD_DIR)/library; \
+	$(strip $(CC) $(TARGET_SYSROOT)) $(CFLAGS) $(MBEDTLS_CPPFLAGS) -I../include \
+	    -c $(MBEDTLS_PORT)/mbedtls_aros.c -o mbedtls_aros.o; \
+	$(AR_PLAIN) rs libmbedcrypto.a mbedtls_aros.o
+	@$(TOUCH) $@
+
+#MM
+contrib-mbedtls-build : $(MBEDTLS_BUILD_DIR)/.build-flag
+
+$(MBEDTLS_BUILD_DIR)/.install-flag : $(MBEDTLS_BUILD_DIR)/.build-flag
+	@$(RM) $@
+	@$(ECHO) "Installing  Mbed TLS..."
+	%mkdir_q dir="$(AROS_LIB) $(AROS_INCLUDES)/mbedtls $(AROS_INCLUDES)/psa $(AROS_DEVELOPER)/Docs/mbedtls"
+	@$(CP) $(MBEDTLS_BUILD_DIR)/library/libmbedtls.a $(MBEDTLS_BUILD_DIR)/library/libmbedx509.a \
+	    $(MBEDTLS_BUILD_DIR)/library/libmbedcrypto.a $(AROS_LIB)/
+	@$(CP) -L $(MBEDTLS_BUILD_DIR)/include/mbedtls/*.h $(AROS_INCLUDES)/mbedtls/
+	@$(CP) -L $(MBEDTLS_BUILD_DIR)/include/psa/*.h $(AROS_INCLUDES)/psa/
+	@$(CP) $(MBEDTLS_PORT)/mbedtls_user_config_aros.h $(AROS_INCLUDES)/
+	@$(CP) $(MBEDTLS_SOURCE)/LICENSE $(MBEDTLS_PORT)/README.aros $(MBEDTLS_PORT)/mbedtls.pkginfo \
+	    $(AROS_DEVELOPER)/Docs/mbedtls/
+	@$(TOUCH) $@
+
+#MM
+contrib-mbedtls-install : $(MBEDTLS_BUILD_DIR)/.install-flag
+
+%common
